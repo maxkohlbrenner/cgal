@@ -61,6 +61,8 @@ inline void line_quadric_intersection(const Eigen::VectorXd &x, const Eigen::Vec
     double b = 2 * (y-x).transpose() * H * x;
     double c =         x.transpose() * H * x;
 
+    if (abs(a) < 1e-8) std::cout << "(LQI) ERROR: a close to zero" << std::endl;
+
     double delta = b*b-4*a*c;
     lambda_1 = (-b-sqrt(delta)) / (2*a);
     lambda_2 = (-b+sqrt(delta)) / (2*a);
