@@ -38,7 +38,7 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
                            Eigen::MatrixXd& result,
                            Eigen::MatrixXi* contact_indices = nullptr,
                            double atol = 1e-8,
-                           int debug_level = 4)
+                           int debug_level = 0)
 {
   constexpr int D = Dimension::value;
   using namespace CGAL::Maximal_empty_spheres::internal;
@@ -95,11 +95,11 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
   // std::cout << "... on quadric? ";
   // std::cout << std::boolalpha << ( ((NC.array() * SL.array()).rowwise().sum()).matrix().norm() < atol) << std::endl;
 
-  std::cout << "NC: " << NC << std::endl;
+  // std::cout << "NC: " << NC << std::endl;
 
   bool rc_hs=false;
   if (rc_hs){
-      std::cout << "Integrating the last component is negative halfspace" << std::endl;
+      // std::cout << "Integrating the last component is negative halfspace" << std::endl;
       Eigen::MatrixXd NCe(NC.rows()+1,NC.cols());
       NCe.block(0,0,NC.rows(),NC.cols()) = NC;
       Eigen::RowVectorXd n_hsn = Eigen::RowVectorXd::Zero(NC.cols());
@@ -163,7 +163,9 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
     std::cout << "Convex hull of " << points.size() << " points computed in " << timer.time() << " seconds." << std::endl;
   }
 
-  std::cout << "Current dimension: " << t.current_dimension() << std::endl;
+  if (debug_level > 0) {
+    std::cout << "Current dimension: " << t.current_dimension() << std::endl;
+  }
   int current_dim = t.current_dimension();
 
   if (current_dim < D){
@@ -207,7 +209,7 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
         // extract simplex
         int si=0;
         for (int i=0; i<current_dim+1; ++i) {
-            std::cout << "  " << i << " " << std::endl;
+            // std::cout << "  " << i << " " << std::endl;
             if(ch->vertex(i) != t.infinite_vertex()) {
                 typename Triangulation::Vertex_handle vh = ch->vertex(i);
                 int vid = vh->data();
@@ -215,16 +217,14 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
                 simplex.row(si)  = nci;
                 simplex_inds(si) = vid;
                 si++;
-            } else std::cout << " --INF--" << std::endl;
+            } // else std::cout << " --INF--" << std::endl;
         }
-        std::cout << "Simplex: " << std::endl << simplex << std::endl;
-        std::cout << "(inds) : " << std::endl << simplex_inds << std::endl;
+        // std::cout << "Simplex: " << std::endl << simplex << std::endl;
+        // std::cout << "(inds) : " << std::endl << simplex_inds << std::endl;
     
         // span the normal space and flip into the cone
         svd.compute(simplex, Eigen::ComputeFullV);
-
-        std::cout << "svalues: " << svd.singularValues().transpose() << std::endl;
-
+        // std::cout << "svalues: " << svd.singularValues().transpose() << std::endl;
         K_l = svd.matrixV().block(0,D+1,D+3,2).transpose();
         inv = ((K_l * NC_.transpose()).rowwise().maxCoeff().array() >= atol);
         for (int i=0; i<K_l.rows(); ++i) {
@@ -232,24 +232,24 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
             K_l.row(i) *= -1;
           }
         }
-        std::cout << "In Cone? " << std::endl;
-        std::cout << K_l * NC_.transpose() << std::endl;
-        std::cout << std::endl;
+        // std::cout << "In Cone? " << std::endl;
+        // std::cout << K_l * NC_.transpose() << std::endl;
+        // std::cout << std::endl;
 
         double ls[2]; // 1,l2;
         line_quadric_intersection(K_l.row(0).transpose(), K_l.row(1).transpose(), H, ls[0],ls[1]);
-        std::cout << "ls: " << ls[0] << ", " << ls[1] << std::endl;
+        // std::cout << "ls: " << ls[0] << ", " << ls[1] << std::endl;
 
         for (int li=0; li<2; ++li) {
             // if ((0.-atol<=ls[li]) && (ls[li]<=1.+atol)) {
             if (true) {
-                std::cout << "cand: " << ls[li] << std::endl;
+                // std::cout << "cand: " << ls[li] << std::endl;
                 Eigen::RowVectorXd s_ = (1-ls[li])*K_l.row(0)+ls[li]*K_l.row(1);
-                std::cout << s_ << std::endl;
+                // std::cout << s_ << std::endl;
                 if ((s_(D+2) < 0.) && (s_(D+1) >= 0) && (fabs(s_(D+2)) >= atol)) {
                 // if (true) {
-                    std::cout << "--> Sol" << std::endl;
-                    std::cout << s_ << std::endl;
+                    // std::cout << "--> Sol" << std::endl;
+                    // std::cout << s_ << std::endl;
                     solutions_.push_back(s_);
                     if (contact_indices) {
                       contact_indices_.emplace_back(simplex_inds);
@@ -264,8 +264,8 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
       solutions.row(i) = solutions_[i];
     }
 
-    std::cout << "Solutions in Cone? " << std::endl;
-    std::cout << solutions * NC_.transpose() << std::endl;
+    // std::cout << "Solutions in Cone? " << std::endl;
+    // std::cout << solutions * NC_.transpose() << std::endl;
 
 
     lie_to_spheres(solutions, result);
@@ -278,8 +278,6 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
       contact_indices->resize(solutions_.size(),D+1);
       for (std::size_t i=0; i<solutions_.size(); ++i) contact_indices->block(i,0,1,D+1) = contact_indices_[i];
     }
-
-    std::cout << "[Not Implemented:] (current_dim == D+1) :TODO" << std::endl;
 
   } else {
     // standard case
@@ -302,7 +300,7 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
     }
 
     if (debug_level > 0) {
-    std::cout << "Boundary of CH has " << infinite_cells.size() << " facets" << std::endl;
+      std::cout << "Boundary of CH has " << infinite_cells.size() << " facets" << std::endl;
     }
 
     Eigen::JacobiSVD<Eigen::MatrixXd> svd;
@@ -315,10 +313,10 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
     int nafs = 0;
 
     for(auto ch : infinite_cells) {
-    std::cout << "ch: " << *ch << std::endl;
+    // std::cout << "ch: " << *ch << std::endl;
     int si=0;
     for (int i=0; i<current_dim+1; ++i) {
-        std::cout << "  " << i << " " << std::endl;
+        // std::cout << "  " << i << " " << std::endl;
         if(ch->vertex(i) != t.infinite_vertex()) {
             typename Triangulation::Vertex_handle vh = ch->vertex(i);
             // std::cout << "        vh: " << *vh << std::endl;
@@ -328,11 +326,12 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
             simplex.row(si)  = nci;
             simplex_inds(si) = vid;
             si++;
-        } else std::cout << " --INF--" << std::endl;
+        } // else std::cout << " --INF--" << std::endl;
     }
 
-    std::cout << "Simplex inds: " << simplex_inds << std::endl;
+    // std::cout << "Simplex inds: " << simplex_inds << std::endl;
 
+    /*
     if (si == D+1){
         // WDT case
         std::cout << "Simplex: " << std::endl << simplex << std::endl;
@@ -349,23 +348,23 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
                 std::cout << s_ << std::endl;
             }
         }
-
-
-    } else if (si < D+2){
+    } else
+    */
+    if (si < D+2){
         // std::cout << "NFS BOUNDARY SIMPLEX" << std::endl;
         full_simplices(ki) = false;
         ++nafs;
         ++ki;
-        std::cout << "(inds) : " << std::endl << simplex_inds << std::endl;
+        // std::cout << "(inds) : " << std::endl << simplex_inds << std::endl;
     } else {
-        std::cout << "Simplex: " << std::endl << simplex << std::endl;
-        std::cout << "(inds) : " << std::endl << simplex_inds << std::endl;
+        // std::cout << "Simplex: " << std::endl << simplex << std::endl;
+        // std::cout << "(inds) : " << std::endl << simplex_inds << std::endl;
         svd.compute(simplex, Eigen::ComputeFullV);
         Ks.row(ki)         = svd.matrixV().col(D+2).transpose();
         full_simplices(ki) = svd.singularValues().array().abs().minCoeff() > atol;
 
-        std::cout << "svalues: " << svd.singularValues().transpose() << std::endl;
-        std::cout << "vertex:  " << Ks.row(ki) << std::endl;
+        // std::cout << "svalues: " << svd.singularValues().transpose() << std::endl;
+        // std::cout << "vertex:  " << Ks.row(ki) << std::endl;
 
         ++ki;
 
@@ -389,8 +388,8 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
     // @todo: reduced to 200 only for memory reasons, loop and increase again? do sth smarter?
     int n_check_planes = (NC.rows()<=max_plains)? NC.rows(): max_plains;
     if(debug_level > 0) {
-    std::cout << "n_check_planes: " << n_check_planes << std::endl;
-    std::cout << "NC.shape(): " << NC.rows() << ", " << NC.cols() << std::endl;
+      std::cout << "n_check_planes: " << n_check_planes << std::endl;
+      std::cout << "NC.shape(): " << NC.rows() << ", " << NC.cols() << std::endl;
     }
 
     Eigen::Vector<bool,Eigen::Dynamic>  inv;
@@ -410,19 +409,19 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
     }
 
     if(debug_level > 0) {
-    std::cout << "... plane flips done" << std::endl;
+      std::cout << "... plane flips done" << std::endl;
     }
 
     if (debug_level > 3) {
     // costly and not possible for large sets of spheres
-    std::cout << "Debugging, remove later (matrices too large), all Ks in the cone?: ";
-    std::cout << ((NC * Ks.transpose()).rowwise().maxCoeff().array() <= atol).array().all() << std::endl;
+      std::cout << "Debugging, remove later (matrices too large), all Ks in the cone?: ";
+      std::cout << ((NC * Ks.transpose()).rowwise().maxCoeff().array() <= atol).array().all() << std::endl;
 
-    std::cout << "Ks: " << std::endl;
-    std::cout << Ks << std::endl;
-    std::cout << std::endl;
-    std::cout << "valids: " << full_simplices.transpose() << std::endl;
-    std::cout << std::endl;
+      std::cout << "Ks: " << std::endl;
+      std::cout << Ks << std::endl;
+      std::cout << std::endl;
+      std::cout << "valids: " << full_simplices.transpose() << std::endl;
+      std::cout << std::endl;
     }
 
     bool cone_filter=false;
@@ -442,16 +441,16 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
         if ((ci < cj) &&    // only treat each edge once
             (!full_simplices_only || (full_simplices(ci) && full_simplices(cj)))) {  // only consider edges between full simplices
 
-          std::cout << "--- Edge (" << ci << " - " << cj << ") ---" << std::endl;
-          std::cout << Ks.row(ci) << std::endl;
-          std::cout << Ks.row(cj) << std::endl;
+          // std::cout << "--- Edge (" << ci << " - " << cj << ") ---" << std::endl;
+          // std::cout << Ks.row(ci) << std::endl;
+          // std::cout << Ks.row(cj) << std::endl;
 
           double ls[2]; // 1,l2;
           line_quadric_intersection(Ks.row(ci), Ks.row(cj), H, ls[0],ls[1]);
           std::cout << "ls: " << ls[0] << ", " << ls[1] << std::endl;
           for (int li=0; li<2; ++li) {
             if ((0.-atol<=ls[li]) && (ls[li]<=1.+atol)) {
-              std::cout << "POTENTIALY ADDING" << std::endl;
+              // std::cout << "POTENTIALY ADDING" << std::endl;
               Eigen::RowVectorXd s_ = (1-ls[li])*Ks.row(ci)+ls[li]*Ks.row(cj);
 
               if ((s_(D+2) < 0.) && (s_(D+1) >= 0) && (fabs(s_(D+2)) >= atol)) {
@@ -463,7 +462,7 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
                   }
                 }
 
-                std::cout << "add: " << add << std::endl;
+                // std::cout << "add: " << add << std::endl;
 
                 if (add) {
                   solutions_.push_back(s_);
@@ -487,8 +486,8 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
     }
 
     if(debug_level > 0 && n_cone_filtered > 0) {
-    std::cout << "(Cone filter!!!) " << std::endl;
-    std::cout << " Filtered " << n_cone_filtered << " spheres that were not in the cone" << std::endl;
+      std::cout << "(Cone filter!!!) " << std::endl;
+      std::cout << " Filtered " << n_cone_filtered << " spheres that were not in the cone" << std::endl;
     }
 
     Eigen::MatrixXd solutions(solutions_.size(),D+3);
@@ -499,7 +498,7 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
     lie_to_spheres(solutions, result);
 
     if(debug_level > 0) {
-    std::cout << "Solutions.size: " << solutions.rows() << ", " << solutions.cols() << std::endl;
+      std::cout << "Solutions.size: " << solutions.rows() << ", " << solutions.cols() << std::endl;
     }
 
     if (contact_indices) {
