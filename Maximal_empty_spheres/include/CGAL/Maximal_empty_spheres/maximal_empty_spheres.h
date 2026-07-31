@@ -222,6 +222,9 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
     
         // span the normal space and flip into the cone
         svd.compute(simplex, Eigen::ComputeFullV);
+
+        std::cout << "svalues: " << svd.singularValues().transpose() << std::endl;
+
         K_l = svd.matrixV().block(0,D+1,D+3,2).transpose();
         inv = ((K_l * NC_.transpose()).rowwise().maxCoeff().array() >= atol);
         for (int i=0; i<K_l.rows(); ++i) {
@@ -238,12 +241,13 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
         std::cout << "ls: " << ls[0] << ", " << ls[1] << std::endl;
 
         for (int li=0; li<2; ++li) {
-            if ((0.-atol<=ls[li]) && (ls[li]<=1.+atol)) {
+            // if ((0.-atol<=ls[li]) && (ls[li]<=1.+atol)) {
+            if (true) {
                 std::cout << "cand: " << ls[li] << std::endl;
                 Eigen::RowVectorXd s_ = (1-ls[li])*K_l.row(0)+ls[li]*K_l.row(1);
                 std::cout << s_ << std::endl;
-                // if ((s_(D+2) < 0.) && (s_(D+1) >= 0) && (fabs(s_(D+2)) >= atol)) {
-                if (true) {
+                if ((s_(D+2) < 0.) && (s_(D+1) >= 0) && (fabs(s_(D+2)) >= atol)) {
+                // if (true) {
                     std::cout << "--> Sol" << std::endl;
                     std::cout << s_ << std::endl;
                     solutions_.push_back(s_);
