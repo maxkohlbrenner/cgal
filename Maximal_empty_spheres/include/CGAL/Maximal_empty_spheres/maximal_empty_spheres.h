@@ -429,82 +429,74 @@ void maximal_empty_spheres(const Eigen::MatrixXd& G,
     std::vector<Eigen::RowVectorXd> solutions_;
     std::vector<Eigen::RowVectorXi> contact_indices_;
     for(auto ch : infinite_cells) {
-    int ci = ch->data();
+        int ci = ch->data();
+        for (int i=0; i<current_dim+1; ++i) {
+            if(ch->vertex(i) != t.infinite_vertex()) {
+                int cj =  ch->neighbor(i)->data();
+                if ((ci < cj) &&    // only treat each edge once
+                   (!full_simplices_only || (full_simplices(ci) && full_simplices(cj)))) {  // only consider edges between full simplices
 
-    for (int i=0; i<current_dim+1; ++i) {
-      if(ch->vertex(i) != t.infinite_vertex()) {
-          /*
-        if(((ch->vertex(i)         != t.infinite_vertex()) && (current_dim == D+2) ) ||
-             !t.is_infinite(ch->neighbor(i))               && (current_dim  < D+2) ){
-            */
-        int cj =  ch->neighbor(i)->data();
-        if ((ci < cj) &&    // only treat each edge once
-            (!full_simplices_only || (full_simplices(ci) && full_simplices(cj)))) {  // only consider edges between full simplices
+                    double ls[2]; // 1,l2;
+                    line_quadric_intersection(Ks.row(ci), Ks.row(cj), H, ls[0],ls[1]);
+                    std::cout << "ls: " << ls[0] << ", " << ls[1] << std::endl;
 
-          // std::cout << "--- Edge (" << ci << " - " << cj << ") ---" << std::endl;
-          // std::cout << Ks.row(ci) << std::endl;
-          // std::cout << Ks.row(cj) << std::endl;
+                    for (int li=0; li<2; ++li) {
+                        if ((0.-atol<=ls[li]) && (ls[li]<=1.+atol)) {
+                            // std::cout << "POTENTIALY ADDING" << std::endl;
+                            Eigen::RowVectorXd s_ = (1-ls[li])*Ks.row(ci)+ls[li]*Ks.row(cj);
 
-          double ls[2]; // 1,l2;
-          line_quadric_intersection(Ks.row(ci), Ks.row(cj), H, ls[0],ls[1]);
-          std::cout << "ls: " << ls[0] << ", " << ls[1] << std::endl;
-          for (int li=0; li<2; ++li) {
-            if ((0.-atol<=ls[li]) && (ls[li]<=1.+atol)) {
-              // std::cout << "POTENTIALY ADDING" << std::endl;
-              Eigen::RowVectorXd s_ = (1-ls[li])*Ks.row(ci)+ls[li]*Ks.row(cj);
+                            if ((s_(D+2) < 0.) && (s_(D+1) >= 0) && (fabs(s_(D+2)) >= atol)) {
+                                bool add = true;
+                                if (cone_filter) {
+                                    if (((s_*NC.transpose()).array() > atol).any()) {
+                                        add = false;
+                                        ++n_cone_filtered;
+                                    }
+                                }
 
-              if ((s_(D+2) < 0.) && (s_(D+1) >= 0) && (fabs(s_(D+2)) >= atol)) {
-                bool add = true;
-                if (cone_filter) {
-                  if (((s_*NC.transpose()).array() > atol).any()) {
-                    add = false;
-                    ++n_cone_filtered;
-                  }
-                }
-
-                // std::cout << "add: " << add << std::endl;
-
-                if (add) {
-                  solutions_.push_back(s_);
-                  if (contact_indices) {
-                    Eigen::RowVectorXi st(D+1);
-                    int ni=0;
-                    for (int j=0; j<D+2; ++j) {
-                      if (ch->vertex((i+1+j)%(D+3)) != t.infinite_vertex()) {
-                        st(ni++) = ch->vertex((i+1+j)%(D+3))->data();
-                      }
+                                if (add) {
+                                    solutions_.push_back(s_);
+                                    if (contact_indices) {
+                                        Eigen::RowVectorXi st(D+1);
+                                        int ni=0;
+                                        for (int j=0; j<D+2; ++j) {
+                                            if (ch->vertex((i+1+j)%(D+3)) != t.infinite_vertex()) {
+                                                st(ni++) = ch->vertex((i+1+j)%(D+3))->data();
+                                            }
+                                        }
+                                        contact_indices_.emplace_back(st);
+                                    }
+                                }
+                            }
+                        }
                     }
-                    contact_indices_.emplace_back(st);
-                  }
                 }
-              }
             }
-          }
+            }
         }
-      }
-    }
-    }
 
-    if(debug_level > 0 && n_cone_filtered > 0) {
-      std::cout << "(Cone filter!!!) " << std::endl;
-      std::cout << " Filtered " << n_cone_filtered << " spheres that were not in the cone" << std::endl;
-    }
+        if(debug_level > 0) std::cout << "finished loop" << std::endl;
 
-    Eigen::MatrixXd solutions(solutions_.size(),D+3);
-    for (std::size_t i=0; i<solutions_.size(); ++i) {
-    solutions.row(i) = solutions_[i];
-    }
+        if(debug_level > 0 && n_cone_filtered > 0) {
+          std::cout << "(Cone filter!!!) " << std::endl;
+          std::cout << " Filtered " << n_cone_filtered << " spheres that were not in the cone" << std::endl;
+        }
 
-    lie_to_spheres(solutions, result);
+        Eigen::MatrixXd solutions(solutions_.size(),D+3);
+        for (std::size_t i=0; i<solutions_.size(); ++i) {
+        solutions.row(i) = solutions_[i];
+        }
 
-    if(debug_level > 0) {
-      std::cout << "Solutions.size: " << solutions.rows() << ", " << solutions.cols() << std::endl;
-    }
+        lie_to_spheres(solutions, result);
 
-    if (contact_indices) {
-    contact_indices->resize(solutions_.size(),D+1);
-    for (std::size_t i=0; i<solutions_.size(); ++i) contact_indices->block(i,0,1,D+1) = contact_indices_[i];
-    }
+        if(debug_level > 0) {
+          std::cout << "Solutions.size: " << solutions.rows() << ", " << solutions.cols() << std::endl;
+        }
+
+        if (contact_indices) {
+        contact_indices->resize(solutions_.size(),D+1);
+        for (std::size_t i=0; i<solutions_.size(); ++i) contact_indices->block(i,0,1,D+1) = contact_indices_[i];
+        }
 
     }
 
